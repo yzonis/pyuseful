@@ -5,10 +5,12 @@ def dircontents(dirPath):
     #
     # Input integrity check
     #
-    dirPath_ = dirverify(dirPath)
-    if (dirPath_ == ''):
+    if (not pth.isdir(dirPath)):
         return ([],[])
-    sep = dirPath_[-1]
+
+    dirPath_ = pth._getfullpathname(dirPath)
+    if (dirPath_[-1] != '\\'):
+        dirPath_ += '\\'
 
     #
     # Action
@@ -19,7 +21,7 @@ def dircontents(dirPath):
     for currItem in FullList:
         currPath = dirPath_ + currItem
         if pth.isdir(currPath):
-            DirsList.append(currPath+sep)
+            DirsList.append(currPath+'\\')
         else:
             FilesList.append(currPath)
 
@@ -27,8 +29,21 @@ def dircontents(dirPath):
 
 
 def deepdirslist(dirPath):
+    #
+    # Input integrity check
+    #
+    if (not pth.isdir(dirPath)):
+        return []
+
+    dirPath_ = pth._getfullpathname(dirPath)
+    if (dirPath_[-1] != '\\'):
+        dirPath_ += '\\'
+
+    #
+    # Action
+    #
     DirsList,_ = dircontents(dirPath)
-    if (DirsList.__len__() != 0):
+    if (len(DirsList) != 0):
         SubDirsList = []
         for subDir in DirsList:
             SubDirsList += deepdirslist(subDir)
@@ -42,31 +57,38 @@ def deepfileslist(*args):
     #
     # Input integrity check
     #
-    if (args.__len__() == 0):
+    if (len(args) == 0):
         return []
 
     dirPath = args[0]
 
-    if (args.__len__() > 1):
+    if (len(args) > 1):
         hasStr = args[1]
 
-    if ( (args.__len__() == 1) or not isinstance(hasStr,str) ):
+    if ( (len(args) == 1) or not isinstance(hasStr,str) ):
         hasStr = ''
+
+    if (not pth.isdir(dirPath)):
+        return []
+
+    dirPath_ = pth._getfullpathname(dirPath)
+    if (dirPath_[-1] != '\\'):
+        dirPath_ += '\\'
 
     #
     # Action
     #
-    DirsList,FilesList = dircontents(dirPath)
-    if (hasStr.__len__() != 0):
+    DirsList,FilesList = dircontents(dirPath_)
+    if (hasStr != ''):
         i = 0
-        while (i < FilesList.__len__()):
+        while (i < len(FilesList)):
             if (FilesList[i].find(hasStr) == -1):
                 FilesList.__delitem__(i)
-                i = i - 1
+                continue
 
-            i = i + 1
+            i += 1
 
-    if (DirsList.__len__() != 0):
+    if (len(DirsList) != 0):
         SubFilesList = []
         for subDir in DirsList:
             SubFilesList += deepfileslist(subDir,hasStr)
@@ -76,37 +98,29 @@ def deepfileslist(*args):
     return FilesList
 
 
-def dirverify(dirPath):
-    '''
-    verifies that the input string is a full-path to a directory
+def dirdiff(pathA,pathB):
+    #
+    # Input integrity check
+    #
+    if ( (not pth.isdir(pathA)) or (not pth.isdir(pathB)) ):
+        return -1
 
-    input:
-      dirPath - a string to be checked
+    pathA_ = pth._getfullpathname(pathA)
+    if (pathA_[-1] != '\\'):
+        pathA_ += '\\'
 
-    output:
-      dirPath_ - an empty string in case the input string is not
-                 a directory or a relative and not full path.
-                 in case the input string is indeed a full-path,
-                 the output is the full path with an additional 
-                 dir separator ('\' or '/') in case there wasn't
-                 one at the end of the input string
-    '''
+    pathB_ = pth._getfullpathname(pathB)
+    if (pathB_[-1] != '\\'):
+        pathB_ += '\\'
 
-    if not pth.isdir(dirPath):
-        return ''
+    diffCount = 0
 
-    if ( (dirPath[0] == '.') or (dirPath[:2] == '..') ):
-        return ''
+    DirsA,FilesA = dircontents(pathA_)
+    DirsB,FilesB = dircontents(pathB_)
 
-    if (dirPath.find('/') != -1):
-        sep = '/'
-    elif (dirPath.find('\\') != -1):
-        sep = '\\'
+    FilesDiff  = list(set(FilesA).difference(FilesB))
+    diffCount += len(FilesDiff)
 
-    dirPath_ = dirPath
-    if (dirPath_[-1] != sep):
-        dirPath_ += sep
-
-    return dirPath_
-
-A = deepfileslist('C:\\Users\\yaniv\\Desktop\\calibrationData\\evaluationChamber\\2017-09-27_sys1.3_damage_tests')
+    if (len(FilesDiff) > 0):
+        for fileName in FilesDiff:
+            print(pth._getfullpathname())
