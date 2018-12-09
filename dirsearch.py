@@ -1,10 +1,15 @@
 import os
 import os.path as pth
 
-def dircontents(dirPath):
+def dircontents(dirPath,**kargs):
     #
     # Input integrity check
     #
+    if ('fullpath' in kargs.keys()):
+        fullpath = kargs['fullpath']
+    else:
+        fullpath = True
+
     if (not pth.isdir(dirPath)):
         return ([],[])
 
@@ -18,12 +23,20 @@ def dircontents(dirPath):
     DirsList  = []
     FilesList = []
     FullList  = os.listdir(dirPath_)
-    for currItem in FullList:
-        currPath = dirPath_ + currItem
-        if pth.isdir(currPath):
-            DirsList.append(currPath+'\\')
-        else:
-            FilesList.append(currPath)
+
+    if (fullpath):
+        for currItem in FullList:
+            currPath = dirPath_ + currItem
+            if pth.isdir(currPath):
+                DirsList.append(currPath)
+            else:
+                FilesList.append(currPath)
+    else:
+        for currItem in FullList:
+            if pth.isdir(dirPath_ + currItem):
+                DirsList.append(currItem)
+            else:
+                FilesList.append(currItem)
 
     return (DirsList,FilesList)
 
@@ -83,7 +96,7 @@ def deepfileslist(*args):
         i = 0
         while (i < len(FilesList)):
             if (FilesList[i].find(hasStr) == -1):
-                FilesList.__delitem__(i)
+                FilesList.pop(i)
                 continue
 
             i += 1
@@ -113,14 +126,88 @@ def dirdiff(pathA,pathB):
     if (pathB_[-1] != '\\'):
         pathB_ += '\\'
 
-    diffCount = 0
+    #
+    # Action
+    #
+    diffCount     = 0
+    basepathStack = ['']
+    while (len(basepathStack) != 0):
+        basepath = basepathStack.pop(-1)
 
-    DirsA,FilesA = dircontents(pathA_)
-    DirsB,FilesB = dircontents(pathB_)
+        DirsA,FilesA = dircontents(pathA_+basepath,fullpath=False)
+        DirsB,FilesB = dircontents(pathB_+basepath,fullpath=False)
 
-    FilesDiff  = list(set(FilesA).difference(FilesB))
-    diffCount += len(FilesDiff)
+        FilesDiff  = list(set(FilesA).difference(FilesB)) + list(set(FilesB).difference(FilesA))
+        diffCount += len(FilesDiff)
 
-    if (len(FilesDiff) > 0):
-        for fileName in FilesDiff:
-            print(pth._getfullpathname())
+        if (len(FilesDiff) > 0):
+            for fileName in FilesDiff:
+                print('xf : '+basepath+fileName)
+
+        DirsDiff   = list(set(DirsA).difference(DirsB)) + list(set(DirsB).difference(DirsA))
+        diffCount += len(DirsDiff)
+
+        if (len(DirsDiff) > 0):
+            for dirName in DirsDiff:
+                print('xd : '+basepath+dirName+'\\')
+
+        FilesCommon = list(set(FilesA).intersection(FilesB))
+        if (len(FilesCommon) != 0):
+            for filename in FilesCommon:
+                fid1 = open(pathA_+basepath+filename,'rb')
+                fid2 = open(pathB_+basepath+filename,'rb')
+                x1   = fid1.read(16384)
+                x2   = fid2.read(16384)
+
+                sameFlag = True
+                while ((x1 != b'') and (x2 != b'')):
+                    if (x1 != x2):
+                        sameFlag = False
+                        break
+
+                    x1 = fid1.read(16384)
+                    x2 = fid2.read(16384)
+
+                fid1.close()
+                fid2.close()
+
+                if (not sameFlag):
+                    diffCount += 1
+                    print('!f : '+basepath+filename)
+
+        DirsCommon = list(set(DirsA).intersection(DirsB))
+        if (len(DirsCommon) != 0):
+            for dirname in DirsCommon:
+                basepathStack.append(basepath+dirname+'\\')
+
+    print('\nTotal diffs: '+str(diffCount))
+
+    return diffCount
+
+def nofiles(dirPath):
+    #
+    # Input integrity check
+    #
+    if (not pth.isdir(dirPath)):
+        return False
+
+    dirPath_ = pth._getfullpathname(dirPath)
+    if (dirPath_[-1] != '\\'):
+        dirPath_ += '\\'
+
+    #
+    # Action
+    #
+    basepathStack = ['']
+    while (len(basepathStack) != 0):
+        basepath   = basepathStack.pop(-1)
+        Dirs,Files = dircontents(dirPath_+basepath,fullpath=False)
+
+        if (len(Files) != 0):
+            return False
+
+        if (len(Dirs) != 0):
+            for dirname in Dirs:
+                basepathStack.append(basepath+dirname+'\\')
+
+    return True
