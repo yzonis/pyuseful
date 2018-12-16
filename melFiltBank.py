@@ -1,6 +1,6 @@
 import numpy as np
 
-def melFiltBank(nfft,Fs,nmels):
+def melFiltBank(nfft,Fs,nmels,normFlag):
     freqLow  = 0
     freqHigh = 2595 * np.log10(1 + (Fs/2)/700)
 
@@ -13,11 +13,19 @@ def melFiltBank(nfft,Fs,nmels):
         iLeft    = indVec[iFilt]
         iMid     = indVec[iFilt+1]
         iRight   = indVec[iFilt+2]
-        vecLeft  = np.arange(iLeft+1,iMid)
-        vecRight = np.arange(iMid,iRight)
 
-        M[iFilt,(iLeft+1):iMid]  = (vecLeft-iLeft)/(iMid-iLeft)
-        M[iFilt,iMid:iRight] = (iRight-vecRight)/(iRight-iMid)
+        if (iLeft < iMid):
+            vecLeft                 = np.arange(iLeft+1,iMid)
+            M[iFilt,(iLeft+1):iMid] = (vecLeft-iLeft) / (iMid-iLeft)
+
+        if (iMid < iRight):
+            vecRight             = np.arange(iMid,iRight)
+            M[iFilt,iMid:iRight] = (iRight-vecRight) / (iRight-iMid)
+        else:
+            M[iFilt,iMid] = 1
+
+        if (normFlag):
+            M[iFilt,:] /= hzVec[iFilt+2] - hzVec[iFilt]
 
     melVec = melVec[1:-1]
 
